@@ -95,10 +95,10 @@ It also imports cleanly into other code: `SerpenoidGait`, `load`, `run` and `sum
 |---|---|---|---|---|---|
 | vh9_full | 45° | 2.33 m | 252 mm/s | 6.6° | 0% |
 | vh9_full, `--backward` | 45° | −2.39 m | −253 mm/s | – | – |
-| vh9_bare | 45° | 1.88 m | 205 mm/s | – | – |
+| vh9_bare | 45° | 1.65 m | 181 mm/s | 3.9° | 0% |
 | vh17_full | 45° | 2.21 m | 240 mm/s | **27°** | **12%** |
 | vh17_full | 60° | 1.48 m | 165 mm/s | 5.6° | 0% |
-| vh17_bare | 60° | 1.45 m | 158 mm/s | – | – |
+| vh17_bare | 60° | 1.36 m | 150 mm/s | 14.9° | 4% |
 
 `results/` holds the video and plot for vh9_full (φ = 45°) and vh17_full (φ = 60°).
 
