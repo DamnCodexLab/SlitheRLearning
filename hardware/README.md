@@ -159,7 +159,7 @@ Then in Fusion open **Utilities → Scripts and Add-Ins** and run the launcher. 
   - +H lifts the body behind that joint.
   - Limit ±55°.
 - **Links:**
-  - `base` is the caboose. "Bare" variants keep it; they drop only the head, tail shell and tail wire guide.
+  - `base` is the first coupler and servo. "Full" variants add the caboose (with its 4 wheels), tail shell, tail wire guide and head. "Bare" variants are the modules only.
   - Wheels are passive continuous joints.
 - **IR sensors (TCRT5000):**
   - In the URDF, `ir_*` frames point +x outward.

@@ -4,7 +4,7 @@ hardware/mechanical/pla-mg90s-morphism (run export_fusion_vh.py there first if p
 
 Outputs (next to this script):
     snake_vh17_full.urdf / .xml   17 joints, caboose + tail + head
-    snake_vh17_bare.urdf / .xml   17 joints, caboose only (no tail shell, no head)
+    snake_vh17_bare.urdf / .xml   17 joints, modules only (no caboose, tail or head)
     snake_vh9_full.urdf  / .xml   9 joints  (VHVHVHVHV)
     snake_vh9_bare.urdf  / .xml
     meshes/*.stl                  visual meshes, metres, shared by all files
@@ -14,11 +14,12 @@ Outputs (next to this script):
 
 Conventions
   World: x forward (towards the head), y left, z up, metres, floor at z = 0.
-  Links: base (caboose), m01 .. mNN (module k = rib k + the next module's coupler and servo).
+  Links: base (first coupler + servo; full: + caboose, tail),
+         m01 .. mNN (module k = rib k + the next module's coupler and servo).
   Joints j01_V .. jNN_x numbered tail -> head; every servo joint turns about its link's +z.
          V joints: +angle turns the downstream body to the left (yaw).
          H joints: +angle lifts the downstream body (pitch up).
-  Wheels: passive continuous joints (V modules and caboose); they give the sideways grip.
+  Wheels: passive continuous joints (V modules, and the caboose in full); they give the sideways grip.
   IR (TCRT5000): one board per side on every rib's M3 pad. The sensing point is offset from
          the screw hole along the board (IR_OFFSET) and stands off the pad (IR_STANDOFF).
          URDF frame ir_*: +x points outward.  MJCF site ir_*: +z points outward (rangefinder axis).
@@ -173,16 +174,17 @@ def build(layout, full):
             links[w.name] = w
             joints.append(Joint(f"{tag}_wheel_{side}", "continuous", parent, w.name, axis=(0, 1, 0)))
 
-    # base = caboose (+ tail) + first coupler and servo
+    # base = first coupler and servo; full adds the caboose (+ its wheels), tail and tail guide
     base = Link("base", M @ np.linalg.inv(N))
-    base.add_part("caboose", np.eye(4))
     if full:
+        base.add_part("caboose", np.eye(4))
         base.add_part("tail", np.eye(4)); base.add_part("tail_guide", np.eye(4), coll=None)
     base.add_part("coupler", C[0]); base.add_part("servo", C[0], coll=None)
     links["base"] = base
-    for i, x in enumerate(CAB_AXLES_X):
-        wheel_links("base", np.eye(4), np.array([x, WHEEL_AXLE[1], WHEEL_AXLE[2]]),
-                    f"base_{'rear' if i == 0 else 'front'}")
+    if full:
+        for i, x in enumerate(CAB_AXLES_X):
+            wheel_links("base", np.eye(4), np.array([x, WHEEL_AXLE[1], WHEEL_AXLE[2]]),
+                        f"base_{'rear' if i == 0 else 'front'}")
 
     parent = "base"
     n = len(layout)
