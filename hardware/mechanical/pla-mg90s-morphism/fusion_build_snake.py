@@ -17,7 +17,7 @@ import os
 import adsk.core
 import adsk.fusion
 
-PARTS = r"C:\Users\user\Desktop\dclab\robot\pla-mg90s-morphism\assembly\parts"
+PARTS = r"C:\Users\user\Desktop\dclab\hardware\mechanical\pla-mg90s-morphism\assembly\parts"
 N_NODES = 4
 PITCH_CM = 4.89
 AXIS_X_CM = 0.5

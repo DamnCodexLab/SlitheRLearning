@@ -15,7 +15,7 @@ import os
 import adsk.core
 import adsk.fusion
 
-PARTS = r"C:\Users\user\Desktop\dclab\robot\pla-mg90s-morphism\assembly\parts_vh"
+PARTS = r"C:\Users\user\Desktop\dclab\hardware\mechanical\pla-mg90s-morphism\assembly\parts_vh"
 MIN_VOLUME_MM3 = 0.5
 
 
