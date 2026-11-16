@@ -6,10 +6,14 @@ Simulation and controllers for the Slitherbot snake robot. The robot models come
 ```
 software/
 ├── environment.yaml        conda environment for everything in software/ (Linux / WSL)
-└── sinusoidal/             hard-coded serpenoid gait in MuJoCo
-    ├── run_gait.py         gait + simulation (summary / video / plot / interactive viewer)
-    ├── check_physics.py    physics sanity checks (see "Is the physics believable?")
-    └── results/            example runs: mp4 + plot per model
+├── sinusoidal/             hard-coded serpenoid gait in MuJoCo
+│   ├── run_gait.py         gait + simulation (summary / video / plot / interactive viewer)
+│   ├── check_physics.py    physics sanity checks (see "Is the physics believable?")
+│   └── results/            example runs: mp4 + plot per model
+└── cpg/                    central pattern generator (coupled oscillators), same simulation
+    ├── cpg.py              the CPG (no MuJoCo dependency)
+    ├── run_cpg.py          drive the snake with it; --demo changes parameters mid-run
+    └── results/            demo run: mp4 + plot
 ```
 
 ## 1. Environment (conda, in WSL / Linux)
@@ -174,8 +178,74 @@ What's new in recent releases, and whether it matters here:
 
 The model files keep MuJoCo's defaults, and `run_gait.py` switches to the elliptic cone when it loads them, so `hardware/description/` stays simulator-neutral.
 
-## 5. Next steps
+## 5. `cpg/`: central pattern generator
 
-- **RL environment:** wrap `run()` as a Gymnasium environment. The action is joint targets, or a correction on top of `SerpenoidGait`. The reward is forward speed.
+A CPG produces the same travelling wave as the sine gait, but from a chain of coupled oscillators, one per servo. It's the amplitude-controlled phase-oscillator form of Ijspeert & Crespi (ICRA 2007), which Bing et al. (ICRA 2017) and Jiang et al. ([arXiv 2312.03223](https://arxiv.org/abs/2312.03223)) use on snake robots:
+
+```
+dθ_i/dt   = 2π f + Σ_j w · sin(θ_j − θ_i − φ_ij)      phase; j = neighbours in the same chain (V or H)
+d²r_i/dt² = a · (a/4 · (R − r_i) − dr_i/dt)            amplitude → R, critically damped
+d²δ_i/dt² = a · (a/4 · (B − δ_i) − dδ_i/dt)            offset → B (turning), critically damped
+q_i       = r_i · sin θ_i + δ_i                        servo target
+```
+
+- **Two chains:** the V joints and the H joints form separate chains. Each has its own amplitude, phase lag and offset.
+- **Shared and extra parameters:** the frequency is shared by both chains, and `head_lift` adds an offset to the last H joint.
+- **Defaults:**
+  - The V chain is set to the sine gait's values.
+  - The H chain amplitude is 0.
+  - Coupling w = 4/s and convergence rate a = 10/s, so the amplitude settles in about 0.8 s.
+- **No MuJoCo dependency:** `cpg.py` is plain numpy. A `CPG` object is called with the time, like `SerpenoidGait`.
+- **Changing parameters:** `set_params(...)` changes them while running.
+
+```bash
+python software/cpg/run_cpg.py
+```
+
+```bash
+python software/cpg/run_cpg.py --random-phase
+```
+
+```bash
+MUJOCO_GL=egl python software/cpg/run_cpg.py --demo --video demo.mp4 --plot demo.png
+```
+
+```bash
+python software/cpg/run_cpg.py --viewer --demo
+```
+
+Options match `run_gait.py`: `--model --amp --freq --phase --bias --lift --duration --video --plot --viewer`. A negative `--phase` makes the snake go backward. `--coupling` and `--conv` set w and a.
+
+**Checks (vh9_full unless stated):**
+
+| | Result |
+|---|---|
+| Steady state vs. the sine gait | Joint targets identical, 0.000° max difference after 5 s. Speed 249 vs 252 mm/s, and vh17 at φ 60° gives 165 mm/s in both |
+| Start from random phases | Phase-lag error 30° at 0.5 s, 1.4° at 2 s, 0.01° at 5 s. The coupling locks the wave by itself, and the snake still moves forward at 247 mm/s |
+| Largest joint-target change between 50 Hz servo updates | 1.9° in steady running |
+
+**The `--demo` run, the main reason to use a CPG:** the parameters change at 5, 10 and 15 s:
+- 5 s: faster, amplitude 30→40° and 0.5→0.8 Hz
+- 10 s: turn left, bias +10°
+- 15 s: backward, φ +45°→−45°
+
+| Segment | CPG | Sine, switched at the same instants |
+|---|---|---|
+| Forward | 250 mm/s | 252 mm/s |
+| Faster | 387 mm/s | 387 mm/s |
+| Turn left | turning +63°/s | +63°/s |
+| Backward | 286 mm/s | 356 mm/s |
+| **Largest target jump** | **7.3°** | **89.8°** |
+
+- **Same gait, smooth switches:** both controllers walk the same gait, but the closed-form sine jumps up to 90° in one 20 ms update whenever the frequency or phase changes. A real MG90S would slam its end stop or brown out the supply. The CPG moves into the new gait over about one cycle. See `results/demo_vh9_full.png` (right panel) and `results/demo_vh9_full.mp4`.
+- **Backward is slower:** the CPG's backward segment is slower because it spends part of the segment re-locking the phase lags to the reversed wave.
+
+**Why this matters for RL** (the 2312.03223 recipe):
+- The policy outputs a few CPG parameters (`freq`, `v_amp`, `v_phase`, `v_bias`, …) a few times per second, instead of 9 or 17 joint angles 50 times per second.
+- The CPG turns every policy output, even a jumpy one, into smooth, wave-shaped servo targets. That suits CPU-only training and real servos.
+
+## 6. Next steps
+
+- **RL environment:** wrap `run()` as a Gymnasium environment. The simplest action is the CPG parameters (`CPG.set_params`) at about 1–2 Hz. The alternatives are joint targets, or a correction on top of the gait. The reward is forward speed, or progress to a goal.
 - **Measurements:** measure part masses and servo response, and update `hardware/description/make_description.py`.
 - **Physical calibration:** check sideways wheel grip on the real floor, then set `friction` in the model to match.
