@@ -1,0 +1,23 @@
+# Python environment for everything under hardware/ (mechanical scripts + robot description).
+#   conda env create -f hardware/environment.yaml
+#   conda activate slitherbot-hw
+# Versions in comments were the ones tested (Windows 11, Python 3.13).
+name: slitherbot-hw
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - pip
+  - pip:
+      - numpy               # 2.3
+      - scipy               # 1.18   trimesh: convex hulls, transforms
+      - trimesh             # 4.x / 5.2   mesh load/export (stl, 3mf, glb)
+      - manifold3d          # 3.5    solid booleans (rib holes, interference checks)
+      - shapely             # 2.2    trimesh: 2D sections
+      - rtree               # 1.4    trimesh: spatial queries
+      - networkx            # 3.7    trimesh: scene graphs / splitting
+      - lxml                # 6.1    trimesh: 3mf export
+      - fast-simplification # 0.2    trimesh: decimating tail / head meshes
+      - matplotlib          # 3.10   preview images
+      - mujoco              # 4.0    MJCF loading / simulation
+      - yourdfpy            # 0.0.60 URDF loading / FK checks

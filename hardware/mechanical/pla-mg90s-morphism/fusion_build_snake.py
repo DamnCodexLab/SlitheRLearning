@@ -14,10 +14,15 @@ Each servo_k is a revolute joint about the design Y axis (up) through x=5, z=0
 of that node.  Design frame: x = snake axis, y = up, mm.
 """
 import os
+import sys
+
 import adsk.core
 import adsk.fusion
 
-PARTS = r"C:\Users\user\Desktop\dclab\hardware\mechanical\pla-mg90s-morphism\assembly\parts"
+# Folder of this file. A launcher may exec() it without setting __file__, so fall back to
+# the code object's filename (the path the launcher passed to compile()).
+HERE = os.path.dirname(os.path.abspath(globals().get("__file__") or sys._getframe().f_code.co_filename))
+PARTS = os.path.join(HERE, "assembly", "parts")
 N_NODES = 4
 PITCH_CM = 4.89
 AXIS_X_CM = 0.5
