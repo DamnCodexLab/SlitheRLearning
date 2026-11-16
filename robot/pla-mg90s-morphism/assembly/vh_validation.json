@@ -1,0 +1,237 @@
+{
+ "scenarios": [
+  {
+   "name": "viewer default (A30, lag45, head lift 30 at H8)",
+   "frames": 36,
+   "collisions": {},
+   "lowest_y": -22.5,
+   "floor_hit": false
+  },
+  {
+   "name": "max yaw amplitude (A55, lag45)",
+   "frames": 36,
+   "collisions": {},
+   "lowest_y": -22.5,
+   "floor_hit": false
+  },
+  {
+   "name": "tight coil (A55, lag90)",
+   "frames": 36,
+   "collisions": {},
+   "lowest_y": -22.5,
+   "floor_hit": false
+  },
+  {
+   "name": "tightest coil (A55, lag120)",
+   "frames": 36,
+   "collisions": {},
+   "lowest_y": -22.5,
+   "floor_hit": false
+  },
+  {
+   "name": "max head lift while waving (A55, lag45, H8 55)",
+   "frames": 36,
+   "collisions": {},
+   "lowest_y": -22.5,
+   "floor_hit": false
+  },
+  {
+   "name": "lift from H7 30, level (A30)",
+   "frames": 36,
+   "collisions": {},
+   "lowest_y": -22.5,
+   "floor_hit": false
+  },
+  {
+   "name": "lift from H5 55, level (A40, lag60)",
+   "frames": 36,
+   "collisions": {},
+   "lowest_y": -22.5,
+   "floor_hit": false
+  }
+ ],
+ "corners": {
+  "cases": 94,
+  "colliding": []
+ },
+ "lift": {
+  "front, with head": [
+   {
+    "joint": "H1",
+    "module": 1,
+    "mass_g": 445.1,
+    "kgf_cm": 19.35,
+    "modules_lifted": 16
+   },
+   {
+    "joint": "H2",
+    "module": 3,
+    "mass_g": 394.5,
+    "kgf_cm": 15.22,
+    "modules_lifted": 14
+   },
+   {
+    "joint": "H3",
+    "module": 5,
+    "mass_g": 343.8,
+    "kgf_cm": 11.59,
+    "modules_lifted": 12
+   },
+   {
+    "joint": "H4",
+    "module": 7,
+    "mass_g": 293.1,
+    "kgf_cm": 8.45,
+    "modules_lifted": 10
+   },
+   {
+    "joint": "H5",
+    "module": 9,
+    "mass_g": 242.5,
+    "kgf_cm": 5.8,
+    "modules_lifted": 8
+   },
+   {
+    "joint": "H6",
+    "module": 11,
+    "mass_g": 191.8,
+    "kgf_cm": 3.66,
+    "modules_lifted": 6
+   },
+   {
+    "joint": "H7",
+    "module": 13,
+    "mass_g": 141.1,
+    "kgf_cm": 2.0,
+    "modules_lifted": 4
+   },
+   {
+    "joint": "H8",
+    "module": 15,
+    "mass_g": 90.5,
+    "kgf_cm": 0.85,
+    "modules_lifted": 2
+   }
+  ],
+  "front, no head": [
+   {
+    "joint": "H1",
+    "module": 1,
+    "mass_g": 389.3,
+    "kgf_cm": 14.81,
+    "modules_lifted": 16
+   },
+   {
+    "joint": "H2",
+    "module": 3,
+    "mass_g": 338.7,
+    "kgf_cm": 11.23,
+    "modules_lifted": 14
+   },
+   {
+    "joint": "H3",
+    "module": 5,
+    "mass_g": 288.0,
+    "kgf_cm": 8.14,
+    "modules_lifted": 12
+   },
+   {
+    "joint": "H4",
+    "module": 7,
+    "mass_g": 237.4,
+    "kgf_cm": 5.55,
+    "modules_lifted": 10
+   },
+   {
+    "joint": "H5",
+    "module": 9,
+    "mass_g": 186.7,
+    "kgf_cm": 3.45,
+    "modules_lifted": 8
+   },
+   {
+    "joint": "H6",
+    "module": 11,
+    "mass_g": 136.0,
+    "kgf_cm": 1.84,
+    "modules_lifted": 6
+   },
+   {
+    "joint": "H7",
+    "module": 13,
+    "mass_g": 85.4,
+    "kgf_cm": 0.74,
+    "modules_lifted": 4
+   },
+   {
+    "joint": "H8",
+    "module": 15,
+    "mass_g": 34.7,
+    "kgf_cm": 0.13,
+    "modules_lifted": 2
+   }
+  ],
+  "rear (no caboose/tail)": [
+   {
+    "joint": "H1",
+    "module": 1,
+    "mass_g": 26.3,
+    "kgf_cm": 0.06,
+    "modules_lifted": 2
+   },
+   {
+    "joint": "H2",
+    "module": 3,
+    "mass_g": 77.0,
+    "kgf_cm": 0.54,
+    "modules_lifted": 4
+   },
+   {
+    "joint": "H3",
+    "module": 5,
+    "mass_g": 127.6,
+    "kgf_cm": 1.51,
+    "modules_lifted": 6
+   },
+   {
+    "joint": "H4",
+    "module": 7,
+    "mass_g": 178.3,
+    "kgf_cm": 2.99,
+    "modules_lifted": 8
+   },
+   {
+    "joint": "H5",
+    "module": 9,
+    "mass_g": 229.0,
+    "kgf_cm": 4.95,
+    "modules_lifted": 10
+   },
+   {
+    "joint": "H6",
+    "module": 11,
+    "mass_g": 279.6,
+    "kgf_cm": 7.41,
+    "modules_lifted": 12
+   },
+   {
+    "joint": "H7",
+    "module": 13,
+    "mass_g": 330.3,
+    "kgf_cm": 10.37,
+    "modules_lifted": 14
+   },
+   {
+    "joint": "H8",
+    "module": 15,
+    "mass_g": 381.0,
+    "kgf_cm": 13.83,
+    "modules_lifted": 16
+   }
+  ]
+ },
+ "straight": {
+  "collisions": [],
+  "lowest_y": -22.5
+ }
+}

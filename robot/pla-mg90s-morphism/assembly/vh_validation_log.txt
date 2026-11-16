@@ -1,0 +1,38 @@
+straight: 0 collisions, lowest point y=-22.5
+viewer default (A30, lag45, head lift 30 at H8): 0 colliding pairs ; lowest y -22.5  [7s]
+max yaw amplitude (A55, lag45): 0 colliding pairs ; lowest y -22.5  [11s]
+tight coil (A55, lag90): 0 colliding pairs ; lowest y -22.5  [15s]
+tightest coil (A55, lag120): 0 colliding pairs ; lowest y -22.5  [19s]
+max head lift while waving (A55, lag45, H8 55): 0 colliding pairs ; lowest y -22.5  [24s]
+lift from H7 30, level (A30): 0 colliding pairs ; lowest y -22.5  [28s]
+lift from H5 55, level (A40, lag60): 0 colliding pairs ; lowest y -22.5  [34s]
+corner cases: 94 checked, 0 with collisions  [47s]
+lift torques (kgf*cm, horizontal cantilever, worst case):
+   front, with head
+      H1 lifts 16 modules,  445.1 g -> 19.35 kgf*cm (1075% of 4.8V stall)
+      H2 lifts 14 modules,  394.5 g -> 15.22 kgf*cm ( 846% of 4.8V stall)
+      H3 lifts 12 modules,  343.8 g -> 11.59 kgf*cm ( 644% of 4.8V stall)
+      H4 lifts 10 modules,  293.1 g ->  8.45 kgf*cm ( 469% of 4.8V stall)
+      H5 lifts  8 modules,  242.5 g ->  5.80 kgf*cm ( 322% of 4.8V stall)
+      H6 lifts  6 modules,  191.8 g ->  3.66 kgf*cm ( 203% of 4.8V stall)
+      H7 lifts  4 modules,  141.1 g ->  2.00 kgf*cm ( 111% of 4.8V stall)
+      H8 lifts  2 modules,   90.5 g ->  0.85 kgf*cm (  47% of 4.8V stall)
+   front, no head
+      H1 lifts 16 modules,  389.3 g -> 14.81 kgf*cm ( 823% of 4.8V stall)
+      H2 lifts 14 modules,  338.7 g -> 11.23 kgf*cm ( 624% of 4.8V stall)
+      H3 lifts 12 modules,  288.0 g ->  8.14 kgf*cm ( 452% of 4.8V stall)
+      H4 lifts 10 modules,  237.4 g ->  5.55 kgf*cm ( 308% of 4.8V stall)
+      H5 lifts  8 modules,  186.7 g ->  3.45 kgf*cm ( 192% of 4.8V stall)
+      H6 lifts  6 modules,  136.0 g ->  1.84 kgf*cm ( 102% of 4.8V stall)
+      H7 lifts  4 modules,   85.4 g ->  0.74 kgf*cm (  41% of 4.8V stall)
+      H8 lifts  2 modules,   34.7 g ->  0.13 kgf*cm (   7% of 4.8V stall)
+   rear (no caboose/tail)
+      H1 lifts  2 modules,   26.3 g ->  0.06 kgf*cm (   3% of 4.8V stall)
+      H2 lifts  4 modules,   77.0 g ->  0.54 kgf*cm (  30% of 4.8V stall)
+      H3 lifts  6 modules,  127.6 g ->  1.51 kgf*cm (  84% of 4.8V stall)
+      H4 lifts  8 modules,  178.3 g ->  2.99 kgf*cm ( 166% of 4.8V stall)
+      H5 lifts 10 modules,  229.0 g ->  4.95 kgf*cm ( 275% of 4.8V stall)
+      H6 lifts 12 modules,  279.6 g ->  7.41 kgf*cm ( 412% of 4.8V stall)
+      H7 lifts 14 modules,  330.3 g -> 10.37 kgf*cm ( 576% of 4.8V stall)
+      H8 lifts 16 modules,  381.0 g -> 13.83 kgf*cm ( 768% of 4.8V stall)
+wrote C:\Users\user\Desktop\dclab\robot\pla-mg90s-morphism\assembly\vh_validation.json in 48s

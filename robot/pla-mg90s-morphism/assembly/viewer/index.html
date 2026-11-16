@@ -1,0 +1,581 @@
+<meta charset="utf-8">
+<title>Slitherbot Gait Viewer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed 3D stage on a cutting mat, with a bench-notes control rail on the right (stacks under the stage on phones). */
+:root {
+  --bg: #e9ecea;
+  --panel: #f7f8f7;
+  --fg: #1d2421;
+  --muted: #5d6963;
+  --line: #cfd6d2;
+  --accent: #1f7a5a;
+  --accent-soft: #d6ebe2;
+  --pitch: #8a5a12;
+  --pitch-soft: #f0e3cc;
+  --warn: #b5562a;
+  --warn-soft: #f6dfd3;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121715; --panel: #1a201d; --fg: #e3e9e6; --muted: #93a29a; --line: #2c3631;
+    --accent: #5cc79c; --accent-soft: #1f3a2f; --pitch: #e3b366; --pitch-soft: #3a2e1a;
+    --warn: #e08a5f; --warn-soft: #3d241a; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121715; --panel: #1a201d; --fg: #e3e9e6; --muted: #93a29a; --line: #2c3631;
+  --accent: #5cc79c; --accent-soft: #1f3a2f; --pitch: #e3b366; --pitch-soft: #3a2e1a;
+  --warn: #e08a5f; --warn-soft: #3d241a; color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px;
+  display: grid; grid-template-columns: minmax(0, 1fr) 320px; overflow: hidden;
+}
+#stage { position: relative; min-width: 0; min-height: 0; }
+#stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud {
+  position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 14px; right: 16px;
+  display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; pointer-events: none;
+  font-family: var(--font-mono); font-size: 12px; color: #f2f5f3;
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
+}
+.hud b { display: block; font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.hud span { opacity: .85; text-transform: uppercase; letter-spacing: .06em; font-size: 10.5px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  font: 500 11.5px var(--font-mono); padding: 4px 8px; border-radius: 999px; text-shadow: none;
+  background: rgba(20, 40, 32, .72); color: #d9f2e6; border: 1px solid rgba(160, 220, 195, .35);
+}
+.chip.bad { background: rgba(120, 40, 16, .85); color: #ffe2d4; border-color: rgba(255, 170, 130, .5); }
+#loading { position: absolute; inset: 0; display: grid; place-items: center; color: #f2f5f3; font-family: var(--font-mono); }
+aside {
+  background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto;
+  padding-block: 18px 24px; padding-left: 18px; padding-right: max(18px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 20px;
+}
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: 0; text-wrap: balance; letter-spacing: .01em; }
+.sub { color: var(--muted); margin: 4px 0 0; line-height: 1.45; font-size: 13px; }
+.layout { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .12em; margin-top: 8px; }
+.layout .v { color: var(--accent); } .layout .h { color: var(--pitch); }
+h2 {
+  font-family: var(--font-display); font-weight: 500; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .09em; color: var(--muted); margin: 0 0 8px;
+}
+section { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; gap: 8px; }
+button {
+  font: 500 13px var(--font-body); color: var(--fg); background: transparent; border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px 12px; cursor: pointer; flex: 1;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+label.slider { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
+label.slider output { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+label.slider input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+label.slider.pitch input { accent-color: var(--pitch); }
+label.field { display: grid; gap: 4px; font-size: 13px; }
+select { font: 13px var(--font-body); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+label.check { display: flex; gap: 8px; align-items: center; font-size: 13px; cursor: pointer; }
+label.check input { accent-color: var(--accent); }
+.joints { display: grid; gap: 4px; }
+.joint { display: grid; grid-template-columns: 30px 1fr 40px 44px; align-items: center; gap: 8px; font-size: 11.5px; }
+.joint .load { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.joint .load.hi { color: var(--pitch); font-weight: 500; }
+.joint .load.over { color: var(--warn); font-weight: 500; }
+.joint-head { display: grid; grid-template-columns: 30px 1fr 40px 44px; gap: 8px; font: 10.5px var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.joint-head span:nth-child(n+3) { text-align: right; }
+.joint .name { font-family: var(--font-mono); color: var(--accent); }
+.joint.h .name { color: var(--pitch); }
+.joint .val { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.gauge { position: relative; height: 6px; background: var(--accent-soft); border-radius: 3px; }
+.joint.h .gauge { background: var(--pitch-soft); }
+.gauge::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); opacity: .6; }
+.gauge i { position: absolute; top: 0; bottom: 0; background: var(--accent); border-radius: 3px; }
+.joint.h .gauge i { background: var(--pitch); }
+.gauge.limit i { background: var(--warn) !important; }
+.note { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0; }
+.note code { font-family: var(--font-mono); font-size: 11.5px; }
+@media (max-width: 760px) {
+  body { grid-template-columns: minmax(0, 1fr); grid-template-rows: 58vh auto; overflow-y: auto; height: auto; }
+  aside { border-left: 0; border-top: 1px solid var(--line); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div id="stage">
+  <div id="loading">Loading parts…</div>
+  <div class="hud" aria-live="off">
+    <div><span>Speed</span><b id="hud-speed">0 mm/s</b></div>
+    <div><span>Travelled</span><b id="hud-dist">0 mm</b></div>
+    <div><span>Chin height</span><b id="hud-chin">0 mm</b></div>
+    <div class="chips"><span class="chip" id="chip-stab">Stable</span><span class="chip" id="chip-floor">Clear of floor</span><span class="chip" id="chip-load">Servo load</span><span class="chip" id="chip-contact">0 axles down</span></div>
+  </div>
+</div>
+
+<aside>
+  <div>
+    <h1>Slitherbot VH, 17 modules</h1>
+    <p class="sub">New rib with the square 4-hole leg and the new coupler. V modules (servo axis vertical) swing side to side on wheels; H modules (coupler rolled 90°, oval rib with a wire collector underneath, no wheels) pitch up and down to lift the head.</p>
+    <div class="layout" id="layout" aria-label="Module layout from caboose to head"></div>
+  </div>
+
+  <section>
+    <div class="row">
+      <button id="play" class="primary" type="button">Pause</button>
+      <button id="reset" type="button">Reset</button>
+    </div>
+    <div class="seg" role="group" aria-label="Direction">
+      <button id="dir-fwd" type="button" aria-pressed="true">Head first</button>
+      <button id="dir-rev" type="button" aria-pressed="false">Tail first</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Raise the head (H joints)</h2>
+    <label class="slider pitch">Lift angle <output id="o-lift"></output><input id="lift" type="range" min="0" max="55" step="1" value="30"></label>
+    <label class="field">Lift from
+      <select id="liftfrom">
+        <option value="1" selected>Last H joint (head module only)</option>
+        <option value="2">2nd-last H joint (3 modules + head)</option>
+        <option value="3">3rd-last H joint (5 modules + head)</option>
+        <option value="4">4th-last H joint (7 modules + head)</option>
+      </select>
+    </label>
+    <label class="check"><input id="level" type="checkbox" checked> Keep the head level (front H joint tilts back)</label>
+    <p class="note">An MG90S stalls at about 1.8 kgf·cm (4.8 V). Lifting from the last H joint needs about half of that; lifting from further back overloads the servo. Watch the load column below.</p>
+  </section>
+
+  <section>
+    <h2>Undulation (V joints)</h2>
+    <label class="check"><input id="wave" type="checkbox" checked> Run the side-to-side wave</label>
+    <label class="slider">Amplitude <output id="o-amp"></output><input id="amp" type="range" min="5" max="55" step="1" value="30"></label>
+    <label class="slider">Frequency <output id="o-freq"></output><input id="freq" type="range" min="0.1" max="1.5" step="0.05" value="0.5"></label>
+    <label class="slider">Phase lag per V module <output id="o-phase"></output><input id="phase" type="range" min="10" max="120" step="5" value="45"></label>
+    <label class="slider">Turn bias <output id="o-bias"></output><input id="bias" type="range" min="-15" max="15" step="1" value="0"></label>
+  </section>
+
+  <section>
+    <h2>Servos, caboose → head</h2>
+    <div class="joint-head" aria-hidden="true"><span></span><span>angle</span><span>deg</span><span>load</span></div>
+    <div class="joints" id="joints"></div>
+    <p class="note">Angles are limited to ±55°, where the new rib starts to hit its own coupler and servo. Load is the gravity torque the servo must hold, as a percentage of the 1.8 kgf·cm stall torque; above about 50% the servo runs hot.</p>
+  </section>
+
+  <section>
+    <h2>View</h2>
+    <label class="check"><input id="follow" type="checkbox" checked> Camera follows the snake</label>
+    <label class="check"><input id="support" type="checkbox" checked> Show support area and centre of mass</label>
+    <label class="check"><input id="tail" type="checkbox" checked> Show tail shell</label>
+    <label class="check"><input id="trail" type="checkbox" checked> Show head path</label>
+  </section>
+
+  <p class="note">Parts: <code>new_body_rib</code> (V), <code>body_rib_H</code> (H), <code>body_coupler_new</code>, <code>caboose_new</code>, <code>tail</code>, <code>head_*</code>, <code>wheel</code>; the MG90S is a stand-in and the TPU skin is off. Only V modules carry wheels. Masses assume solid PLA plus 13.4 g per servo, with no battery or electronics. Grid lines are 10 mm apart.</p>
+</aside>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="snake_data.js"></script>
+<script>
+(function () {
+  const D = window.SNAKE_DATA;
+  const stage = document.getElementById('stage');
+  if (!D || !window.THREE || !D._meta.layout) { document.getElementById('loading').textContent = 'Could not load the 3D parts. Reload the page to try again.'; return; }
+  document.getElementById('loading').remove();
+
+  const M = D._meta, LAYOUT = M.layout, NM = LAYOUT.length, PITCH = M.pitch, AX = M.axis_x;
+  const LIFT = -M.ground_y;                  // world floor at y = 0
+  const LIMIT = 55 * Math.PI / 180;
+  const STALL = 1.8; // MG90S stall torque, kgf*cm at 4.8 V
+  const RP = M.roll_pt;
+  const Vidx = [], Hidx = [];
+  for (let k = 0; k < NM; k++) (LAYOUT[k] === 'V' ? Vidx : Hidx).push(k);
+
+  // ---------- scene ----------
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  stage.prepend(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x2f4a40);
+  scene.fog = new THREE.Fog(0x2f4a40, 1400, 3600);
+  const camera = new THREE.PerspectiveCamera(38, 1, 5, 8000);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI * 0.49;
+  controls.minDistance = 150; controls.maxDistance = 3200;
+
+  scene.add(new THREE.HemisphereLight(0xf4f7f5, 0x3a4a43, 0.75));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -750, right: 750, top: 750, bottom: -750, near: 10, far: 2400 });
+  sun.shadow.bias = -0.0004;
+  scene.add(sun, sun.target);
+
+  const mat = new THREE.Mesh(new THREE.PlaneGeometry(10000, 10000),
+    new THREE.MeshStandardMaterial({ color: 0x3f6b5a, roughness: 0.95 }));
+  mat.rotation.x = -Math.PI / 2; mat.receiveShadow = true; scene.add(mat);
+  const g10 = new THREE.GridHelper(5000, 500, 0x5a8473, 0x5a8473); g10.position.y = 0.2; g10.material.transparent = true; g10.material.opacity = 0.32;
+  const g50 = new THREE.GridHelper(5000, 100, 0xb9d4c8, 0xb9d4c8); g50.position.y = 0.3; g50.material.transparent = true; g50.material.opacity = 0.42;
+  scene.add(g10, g50);
+
+  // ---------- geometry ----------
+  function b64(s, T) { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); }
+  const geo = {};
+  for (const [k, g] of Object.entries(D)) {
+    if (k === '_meta') continue;
+    const bg = new THREE.BufferGeometry();
+    const pos = b64(g.v, Float32Array);
+    bg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    bg.setIndex(new THREE.BufferAttribute(b64(g.f, Uint32Array), 1));
+    bg.computeVertexNormals();
+    geo[k] = { g: bg, flat: g.shade === 'flat', mass: g.mass, com: new THREE.Vector3(...g.com), pos };
+  }
+  const mats = {
+    pla: { color: 0xece8de, roughness: 0.62 },
+    plaH: { color: 0xe9dcc2, roughness: 0.62 },
+    pla2: { color: 0xdedad0, roughness: 0.62 },
+    servo: { color: 0xb08a4a, roughness: 0.45, metalness: 0.15 },
+    dark: { color: 0x2a2a2a, roughness: 0.5 },
+    tyre: { color: 0x6c6f70, roughness: 0.8 },
+    head: { color: 0x2b2d2f, roughness: 0.55 },
+    tail: { color: 0xece8de, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false },
+  };
+  const matCache = {};
+  function material(name, flat) {
+    const key = name + (flat ? 'F' : 'S');
+    if (!matCache[key]) matCache[key] = new THREE.MeshStandardMaterial(Object.assign({ flatShading: flat, side: THREE.DoubleSide }, mats[name]));
+    return matCache[key];
+  }
+  // each rigid body: a THREE.Group whose matrix we set, plus its mass and local COM
+  function body() { const g = new THREE.Group(); g.matrixAutoUpdate = false; scene.add(g); return { g, m: 0, c: new THREE.Vector3() }; }
+  function part(b, name, m) {
+    const mesh = new THREE.Mesh(geo[name].g, material(m, geo[name].flat));
+    mesh.castShadow = m !== 'tail'; mesh.receiveShadow = true;
+    b.g.add(mesh);
+    const w = geo[name].mass; b.c.multiplyScalar(b.m).addScaledVector(geo[name].com, w); b.m += w; b.c.divideScalar(b.m);
+    return mesh;
+  }
+  const spinners = [];
+  function wheels(b, ax, key) {
+    for (const s of [1, -1]) {
+      const w = part(b, 'wheel', 'tyre');
+      w.position.set(ax, M.wheel_axle[1], s * M.wheel_axle[2]);
+      const wc = geo.wheel.com.clone(); // wheel COM is its axle; re-add at the real position
+      b.c.multiplyScalar(b.m).addScaledVector(wc, -geo.wheel.mass).addScaledVector(w.position, geo.wheel.mass).divideScalar(b.m);
+      spinners.push({ mesh: w, key });
+    }
+  }
+
+  const base = body();
+  part(base, 'caboose', 'pla'); part(base, 'tail_guide', 'pla2');
+  part(base, 'coupler', 'pla2'); part(base, 'servo', 'servo');
+  const tailMesh = part(base, 'tail', 'tail');
+  M.caboose_axles.forEach((ax, i) => wheels(base, ax, 'c' + i));
+
+  const cpl = [], rib = [];
+  for (let k = 0; k < NM; k++) {
+    if (k > 0) { const c = body(); part(c, 'coupler', 'pla2'); part(c, 'servo', 'servo'); cpl[k] = c; }
+    const r = body();
+    if (LAYOUT[k] === 'H') { part(r, 'ribH', 'plaH'); part(r, 'horn', 'dark'); }
+    else { part(r, 'rib', 'pla'); part(r, 'wire_guide', 'pla2'); part(r, 'horn', 'dark'); wheels(r, AX, 'r' + k); }
+    if (k === NM - 1) { part(r, 'head_bottom', 'head'); part(r, 'head_top', 'head'); }
+    rib[k] = r;
+  }
+
+  // support polygon + COM marker
+  const supGeo = new THREE.BufferGeometry(); supGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(64 * 3), 3));
+  const supLine = new THREE.LineLoop(supGeo, new THREE.LineBasicMaterial({ color: 0x9fe3c3 })); scene.add(supLine);
+  const comDot = new THREE.Mesh(new THREE.RingGeometry(5, 9, 32), new THREE.MeshBasicMaterial({ color: 0xf2c14e, side: THREE.DoubleSide }));
+  comDot.rotation.x = -Math.PI / 2; scene.add(comDot);
+  const comStem = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0xf2c14e }));
+  scene.add(comStem);
+
+  // head path
+  const TRAIL = 1200;
+  const trailPos = new Float32Array(TRAIL * 3);
+  const trailGeo = new THREE.BufferGeometry();
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+  trailGeo.setDrawRange(0, 0);
+  const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: 0xf2c14e }));
+  scene.add(trail);
+  let trailN = 0, trailLast = null;
+
+  // ---------- 3D kinematics ----------
+  const _t1 = new THREE.Matrix4(), _t2 = new THREE.Matrix4(), _r = new THREE.Matrix4();
+  function about(axisFn, ang, p) { // rotation about a line through p
+    return new THREE.Matrix4().makeTranslation(p[0], p[1], p[2]).multiply(axisFn.call(_r, ang)).multiply(_t1.makeTranslation(-p[0], -p[1], -p[2]));
+  }
+  const ROLL_H = about(THREE.Matrix4.prototype.makeRotationX, Math.PI / 2, RP);
+  const ROLL_V = about(THREE.Matrix4.prototype.makeRotationX, -Math.PI / 2, RP);
+  const STEP = new THREE.Matrix4().makeTranslation(PITCH, 0, 0);
+  function baseMat(q) { return new THREE.Matrix4().makeTranslation(q[0], LIFT, q[1]).multiply(_t2.makeRotationY(-q[2])); }
+  function fk(q, th) {
+    const B = baseMat(q), C = [B.clone()], R = [];
+    let cur = B.clone(), prev = 'V';
+    for (let k = 0; k < NM; k++) {
+      const t = LAYOUT[k];
+      if (k > 0) { if (t !== prev) cur.multiply(t === 'H' ? ROLL_H : ROLL_V); C[k] = cur.clone(); }
+      const Rk = cur.clone().multiply(about(THREE.Matrix4.prototype.makeRotationY, th[k], [AX, 0, 0]));
+      R[k] = Rk;
+      cur = Rk.clone().multiply(STEP); prev = t;
+    }
+    return { B, C, R };
+  }
+  const _v = new THREE.Vector3(), _e = new THREE.Vector3();
+  // wheel contacts: caboose axles always; V-rib axles when the wheel is on the floor
+  function contacts(f, keys) {
+    const out = [];
+    const take = (key, Mx, ax) => {
+      _v.set(ax, M.wheel_axle[1], 0).applyMatrix4(Mx);
+      _e.set(1, 0, 0).transformDirection(Mx);
+      return { key, x: _v.x, z: _v.z, y: _v.y, a: Math.atan2(_e.z, _e.x), Mx, ax };
+    };
+    M.caboose_axles.forEach((ax, i) => out.push(take('c' + i, f.B, ax)));
+    for (const k of Vidx) {
+      const c = take('r' + k, f.R[k], AX);
+      if (keys ? keys.has(c.key) : Math.abs(c.y - (LIFT + M.wheel_axle[1])) < 1.0) out.push(c);
+    }
+    return out;
+  }
+  // ---------- quasi-static wheel model (planar base, flat caboose) ----------
+  const CT = 0.3;
+  function vel(c0, c1) {
+    const r = [];
+    for (let i = 0; i < c0.length; i++) {
+      const dx = c1[i].x - c0[i].x, dz = c1[i].z - c0[i].z, a = c0[i].a;
+      r.push(-Math.sin(a) * dx + Math.cos(a) * dz, CT * (Math.cos(a) * dx + Math.sin(a) * dz));
+    }
+    return r;
+  }
+  function solve3(A, b) {
+    for (let i = 0; i < 3; i++) {
+      let p = i; for (let r = i + 1; r < 3; r++) if (Math.abs(A[r][i]) > Math.abs(A[p][i])) p = r;
+      [A[i], A[p]] = [A[p], A[i]]; [b[i], b[p]] = [b[p], b[i]];
+      for (let r = i + 1; r < 3; r++) { const f = A[r][i] / A[i][i]; for (let c = i; c < 3; c++) A[r][c] -= f * A[i][c]; b[r] -= f * b[i]; }
+    }
+    const x = [0, 0, 0];
+    for (let i = 2; i >= 0; i--) { let s = b[i]; for (let c = i + 1; c < 3; c++) s -= A[i][c] * x[c]; x[i] = s / A[i][i]; }
+    return x;
+  }
+  function step(q, th0, th1) {
+    const c0 = contacts(fk(q, th0));
+    const keys = new Set(c0.map(c => c.key));
+    const b = vel(c0, contacts(fk(q, th1), keys)).map(v => -v);
+    const J = [0, 1, 2].map(i => { const dq = q.slice(); dq[i] += 1e-4; return vel(c0, contacts(fk(dq, th0), keys)).map(v => v / 1e-4); });
+    const A = [[0, 0, 0], [0, 0, 0], [0, 0, 0]], y = [0, 0, 0];
+    for (let r = 0; r < b.length; r++) for (let i = 0; i < 3; i++) { y[i] += J[i][r] * b[r]; for (let j = 0; j < 3; j++) A[i][j] += J[i][r] * J[j][r]; }
+    const v = solve3(A, y);
+    const qn = [q[0] + v[0], q[1] + v[1], q[2] + v[2]];
+    const c1 = contacts(fk(qn, th1), keys);
+    return { q: qn, c0, c1 };
+  }
+
+  // ---------- state + UI ----------
+  const el = id => document.getElementById(id);
+  const ui = { amp: el('amp'), freq: el('freq'), phase: el('phase'), bias: el('bias'), lift: el('lift') };
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let playing = !reduce, dir = 1, t = 0, q = [0, 0, 0], dist = 0, speed = 0;
+  const rolled = {};
+
+  el('layout').innerHTML = [...LAYOUT].map(c => `<span class="${c.toLowerCase()}">${c}</span>`).join('');
+
+  let liftCur = 0; // eased lift angle so posture changes are smooth
+  function angles(time) {
+    const th = new Array(NM).fill(0);
+    const A = +ui.amp.value * Math.PI / 180, f = +ui.freq.value, ph = +ui.phase.value * Math.PI / 180, bias = +ui.bias.value * Math.PI / 180;
+    if (el('wave').checked) Vidx.forEach((k, i) => { th[k] = A * Math.sin(2 * Math.PI * f * time + dir * i * ph) + bias; });
+    else Vidx.forEach(k => { th[k] = bias; });
+    const n = +el('liftfrom').value, hk = Hidx[Hidx.length - n];
+    th[hk] += liftCur;
+    if (el('level').checked && n > 1) th[Hidx[Hidx.length - 1]] -= liftCur;
+    return th.map(a => Math.max(-LIMIT, Math.min(LIMIT, a)));
+  }
+  function centre() {
+    const f = fk([0, 0, 0], angles(0));
+    const mid = f.R.reduce((a, R) => { _v.setFromMatrixPosition(R); return [a[0] + _v.x, a[1] + _v.z]; }, [0, 0]).map(v => v / NM);
+    return [-mid[0] + 60, -mid[1], 0];
+  }
+  function reset() { t = 0; liftCur = +ui.lift.value * Math.PI / 180; q = centre(); dist = 0; speed = 0; for (const k in rolled) rolled[k] = 0; trailN = 0; trailLast = null; trailGeo.setDrawRange(0, 0); snapCamera(); }
+
+  const jointRows = [];
+  let vn = 0, hn = 0;
+  for (let k = 0; k < NM; k++) {
+    const isH = LAYOUT[k] === 'H';
+    const row = document.createElement('div'); row.className = 'joint' + (isH ? ' h' : '');
+    row.innerHTML = `<span class="name">${isH ? 'H' + (++hn) : 'V' + (++vn)}</span><span class="gauge"><i></i></span><span class="val">0°</span><span class="load">0%</span>`;
+    el('joints').appendChild(row);
+    jointRows.push({ g: row.querySelector('.gauge'), bar: row.querySelector('i'), val: row.querySelector('.val'), load: row.querySelector('.load'), name: row.querySelector('.name').textContent });
+  }
+  function fmtOut() {
+    el('o-amp').textContent = ui.amp.value + '°';
+    el('o-freq').textContent = (+ui.freq.value).toFixed(2) + ' Hz';
+    el('o-phase').textContent = ui.phase.value + '°';
+    el('o-bias').textContent = (ui.bias.value > 0 ? '+' : '') + ui.bias.value + '°';
+    el('o-lift').textContent = ui.lift.value + '°';
+  }
+  Object.values(ui).forEach(i => i.addEventListener('input', fmtOut)); fmtOut();
+  el('play').addEventListener('click', () => { playing = !playing; el('play').textContent = playing ? 'Pause' : 'Play'; });
+  el('play').textContent = playing ? 'Pause' : 'Play';
+  el('reset').addEventListener('click', reset);
+  function setDir(d) { dir = d; el('dir-fwd').setAttribute('aria-pressed', d === 1); el('dir-rev').setAttribute('aria-pressed', d === -1); }
+  el('dir-fwd').addEventListener('click', () => setDir(1));
+  el('dir-rev').addEventListener('click', () => setDir(-1));
+  el('tail').addEventListener('change', e => { tailMesh.visible = e.target.checked; });
+  el('trail').addEventListener('change', e => { trail.visible = e.target.checked; });
+  el('support').addEventListener('change', e => { supLine.visible = comDot.visible = comStem.visible = e.target.checked; });
+
+  // floor check: sample vertices of rib + coupler, test lowest world point per frame
+  function sample(name, n) { const p = geo[name].pos, out = [], s = Math.max(1, Math.floor(p.length / 3 / n)); for (let i = 0; i < p.length / 3; i += s) out.push(new THREE.Vector3(p[3 * i], p[3 * i + 1], p[3 * i + 2])); return out; }
+  const ribPts = sample('rib', 160), cplPts = sample('coupler', 80), headPts = sample('head_bottom', 200);
+
+  function hull(pts) { // monotone chain, pts [[x,z],...]
+    pts = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], up = [];
+    for (const p of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+    for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+    return lo.slice(0, -1).concat(up.slice(0, -1));
+  }
+  function margin(h, p) { // signed distance from p to hull edges (+ inside)
+    let m = Infinity;
+    for (let i = 0; i < h.length; i++) {
+      const a = h[i], b = h[(i + 1) % h.length], ex = b[0] - a[0], ez = b[1] - a[1], L = Math.hypot(ex, ez) || 1;
+      m = Math.min(m, ((p[0] - a[0]) * ez * -1 + (p[1] - a[1]) * ex) / L);
+    }
+    return m;
+  }
+
+  // ---------- render loop ----------
+  function place(f) {
+    base.g.matrix.copy(f.B);
+    for (let k = 0; k < NM; k++) { if (k > 0) cpl[k].g.matrix.copy(f.C[k]); rib[k].g.matrix.copy(f.R[k]); }
+    scene.updateMatrixWorld(true);
+    for (const s of spinners) s.mesh.rotation.z = -(rolled[s.key] || 0) / M.wheel_r;
+  }
+  function analyse(f) {
+    // centre of mass
+    const com = new THREE.Vector3(); let mass = 0;
+    const add = (b, Mx) => { com.addScaledVector(b.c.clone().applyMatrix4(Mx), b.m); mass += b.m; };
+    add(base, f.B); for (let k = 0; k < NM; k++) { if (k > 0) add(cpl[k], f.C[k]); add(rib[k], f.R[k]); }
+    com.divideScalar(mass);
+    // gravity torque each servo holds: everything downstream of joint k (rib k, coupler k+1, ... head)
+    // kgf*cm = grams * mm / 10000
+    // (a joint whose downstream part still has wheels on the floor is carried by the floor: null)
+    const onFloor = new Set(contacts(f).filter(c => c.key[0] === 'r').map(c => +c.key.slice(1)));
+    const tq = new Array(NM).fill(0);
+    let sm = 0, grounded = false; const smp = new THREE.Vector3();
+    const axisPt = new THREE.Vector3(), axisDir = new THREE.Vector3(), lever = new THREE.Vector3();
+    for (let k = NM - 1; k >= 0; k--) {
+      if (k < NM - 1) { smp.addScaledVector(cpl[k + 1].c.clone().applyMatrix4(f.C[k + 1]), cpl[k + 1].m); sm += cpl[k + 1].m; }
+      smp.addScaledVector(rib[k].c.clone().applyMatrix4(f.R[k]), rib[k].m); sm += rib[k].m;
+      if (onFloor.has(k)) grounded = true;
+      if (grounded) { tq[k] = null; continue; }
+      axisPt.set(AX, 0, 0).applyMatrix4(f.R[k]); axisDir.set(0, 1, 0).transformDirection(f.R[k]);
+      lever.copy(smp).addScaledVector(axisPt, -sm);            // sum m * (p - a)
+      const mom = new THREE.Vector3(lever.z, 0, -lever.x);       // (sum m r) x (0, -1, 0)
+      tq[k] = Math.abs(mom.dot(axisDir)) / 10000;
+    }
+    // support polygon from wheels on the floor
+    const cs = contacts(f), pts = [];
+    for (const c of cs) for (const s of [1, -1]) { _v.set(c.ax, M.ground_y, s * M.wheel_axle[2]).applyMatrix4(c.Mx); pts.push([_v.x, _v.z]); }
+    const h = hull(pts), mg = margin(h, [com.x, com.z]);
+    // lowest point of the body
+    let low = Infinity;
+    for (let k = 0; k < NM; k++) {
+      for (const p of ribPts) low = Math.min(low, _v.copy(p).applyMatrix4(f.R[k]).y);
+      if (k > 0) for (const p of cplPts) low = Math.min(low, _v.copy(p).applyMatrix4(f.C[k]).y);
+    }
+    let chin = Infinity; for (const p of headPts) chin = Math.min(chin, _v.copy(p).applyMatrix4(f.R[NM - 1]).y);
+    return { com, mass, h, mg, low, chin, axles: cs.length, tq };
+  }
+  function headTip(f) { _v.set(126, 0, 0).applyMatrix4(f.R[NM - 1]); return [_v.x, _v.z]; }
+  function bodyMid(f) { const p = new THREE.Vector3(); f.R.forEach(R => { _v.setFromMatrixPosition(R); p.add(_v); }); p.divideScalar(NM); p.y = 30; return p; }
+  function snapCamera() {
+    const m = bodyMid(fk(q, angles(t)));
+    controls.target.copy(m); camera.position.set(m.x - 420, 520, m.z + 820);
+  }
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    renderer.setSize(r.width, r.height, false);
+    camera.aspect = r.width / Math.max(1, r.height); camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(stage); resize();
+
+  reset();
+  let last = performance.now(), frameNo = 0, info = null;
+  function frame(now) {
+    const dtReal = Math.min(0.05, (now - last) / 1000); last = now;
+    const target = +ui.lift.value * Math.PI / 180;
+    liftCur += (target - liftCur) * Math.min(1, dtReal * 3);
+    if (playing) {
+      const sub = 4, hh = dtReal / sub, q0 = q.slice();
+      for (let i = 0; i < sub; i++) {
+        const r = step(q, angles(t), angles(t + hh));
+        r.c0.forEach((c, j) => { const a = c.a; rolled[c.key] = (rolled[c.key] || 0) + Math.cos(a) * (r.c1[j].x - c.x) + Math.sin(a) * (r.c1[j].z - c.z); });
+        q = r.q; t += hh;
+      }
+      const d = Math.hypot(q[0] - q0[0], q[1] - q0[1]);
+      dist += d; speed = speed * 0.97 + (d / Math.max(dtReal, 1e-6)) * 0.03;
+    }
+    const th = angles(t), f = fk(q, th);
+    place(f);
+    if (frameNo++ % 3 === 0 || !info) info = analyse(f);
+
+    // overlays
+    const sp = supGeo.attributes.position.array;
+    info.h.forEach((p, i) => { sp[3 * i] = p[0]; sp[3 * i + 1] = 0.8; sp[3 * i + 2] = p[1]; });
+    supGeo.setDrawRange(0, info.h.length); supGeo.attributes.position.needsUpdate = true;
+    comDot.position.set(info.com.x, 0.9, info.com.z);
+    comStem.geometry.setFromPoints([new THREE.Vector3(info.com.x, 0.9, info.com.z), info.com]);
+    comDot.material.color.set(info.mg > 0 ? 0xf2c14e : 0xff6a3d);
+
+    const tip = headTip(f);
+    if (playing && (!trailLast || Math.hypot(tip[0] - trailLast[0], tip[1] - trailLast[1]) > 2)) {
+      if (trailN === TRAIL) { trailPos.copyWithin(0, 3); trailN--; }
+      trailPos.set([tip[0], 0.6, tip[1]], trailN * 3); trailN++; trailLast = tip;
+      trailGeo.setDrawRange(0, trailN); trailGeo.attributes.position.needsUpdate = true;
+    }
+    const m = bodyMid(f);
+    if (el('follow').checked) { const delta = m.clone().sub(controls.target); controls.target.add(delta); camera.position.add(delta); }
+    sun.position.set(m.x + 300, 900, m.z + 220); sun.target.position.copy(m);
+    controls.update();
+    renderer.render(scene, camera);
+
+    th.forEach((a, k) => {
+      const deg = a * 180 / Math.PI, r = jointRows[k], w = Math.abs(deg) / 55 * 50;
+      r.bar.style.left = (deg >= 0 ? 50 : 50 - w) + '%'; r.bar.style.width = w + '%';
+      r.val.textContent = (deg >= 0 ? '+' : '') + deg.toFixed(0) + '°';
+      r.g.classList.toggle('limit', Math.abs(a) >= LIMIT - 1e-6);
+      const pct = info.tq[k] === null ? 0 : info.tq[k] / STALL * 100;
+      r.load.textContent = info.tq[k] === null ? 'floor' : pct.toFixed(0) + '%';
+      r.load.classList.toggle('hi', pct >= 50 && pct < 100);
+      r.load.classList.toggle('over', pct >= 100);
+    });
+    let worst = 0; info.tq.forEach((v, k) => { if ((v || 0) > (info.tq[worst] || 0)) worst = k; });
+    const wp = (info.tq[worst] || 0) / STALL * 100, cl = el('chip-load');
+    cl.textContent = `Max servo load ${wp.toFixed(0)}% (${jointRows[worst].name})`;
+    cl.classList.toggle('bad', wp >= 100);
+    el('hud-speed').textContent = speed.toFixed(0) + ' mm/s';
+    el('hud-dist').textContent = dist >= 1000 ? (dist / 1000).toFixed(2) + ' m' : dist.toFixed(0) + ' mm';
+    el('hud-chin').textContent = Math.max(0, info.chin).toFixed(0) + ' mm';
+    const cs = el('chip-stab'); cs.textContent = info.mg > 0 ? `Stable, COM ${info.mg.toFixed(0)} mm inside` : `Tips over, COM ${(-info.mg).toFixed(0)} mm outside`; cs.classList.toggle('bad', info.mg <= 0);
+    const cf = el('chip-floor'); cf.textContent = info.low < -1 ? `Hits floor by ${(-info.low).toFixed(0)} mm` : 'Clear of floor'; cf.classList.toggle('bad', info.low < -1);
+    el('chip-contact').textContent = `${info.axles} axles down · ${(info.mass / 1000).toFixed(2)} kg`;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
