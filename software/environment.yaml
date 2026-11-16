@@ -1,0 +1,18 @@
+# Python environment for software/ (simulation and controllers). Linux / WSL.
+#   conda env create -f software/environment.yaml
+#   conda activate slitherbot-sw
+# Update after editing this file:
+#   conda env update -f software/environment.yaml --prune
+name: slitherbot-sw
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - numpy
+  - matplotlib            # plots of gait runs
+  - ffmpeg                # mp4 encoding for recorded runs
+  - pip:
+      - mujoco>=4.0.1     # physics; 4.0.1 fixes a 4.0.0 Newton-solver bug
+      - imageio           # writing mp4 / gif from rendered frames
+      - imageio-ffmpeg
