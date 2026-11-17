@@ -13,6 +13,10 @@ dependencies:
   - matplotlib            # plots of gait runs
   - ffmpeg                # mp4 encoding for recorded runs
   - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cpu   # CPU-only PyTorch (no CUDA download)
       - mujoco>=4.0.1     # physics; 4.0.1 fixes a 4.0.0 Newton-solver bug
       - imageio           # writing mp4 / gif from rendered frames
       - imageio-ffmpeg
+      - torch             # RL networks (CPU build)
+      - gymnasium         # RL environment API
+      - stable-baselines3 # SAC

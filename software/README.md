@@ -10,10 +10,16 @@ software/
 │   ├── run_gait.py         gait + simulation (summary / video / plot / interactive viewer)
 │   ├── check_physics.py    physics sanity checks (see "Is the physics believable?")
 │   └── results/            example runs: mp4 + plot per model
-└── cpg/                    central pattern generator (coupled oscillators), same simulation
-    ├── cpg.py              the CPG (no MuJoCo dependency)
-    ├── run_cpg.py          drive the snake with it; --demo changes parameters mid-run
-    └── results/            demo run: mp4 + plot
+├── cpg/                    central pattern generator (coupled oscillators), same simulation
+│   ├── cpg.py              the CPG (no MuJoCo dependency)
+│   ├── run_cpg.py          drive the snake with it; --demo changes parameters mid-run
+│   └── results/            demo run: mp4 + plot
+└── rl_cpg/                 RL (SAC) that sets CPG parameters to reach goal points
+    ├── snake_env.py        Gymnasium environment
+    ├── train_sac.py        training (Stable-Baselines3, CPU)
+    ├── evaluate.py         success rate vs. open-loop CPG, plots, video, viewer
+    ├── results/            trained policy + evaluation plot / video (committed)
+    └── runs/               training output (git-ignored)
 ```
 
 ## 1. Environment (conda, in WSL / Linux)
@@ -244,8 +250,88 @@ Options match `run_gait.py`: `--model --amp --freq --phase --bias --lift --durat
 - The policy outputs a few CPG parameters (`freq`, `v_amp`, `v_phase`, `v_bias`, …) a few times per second, instead of 9 or 17 joint angles 50 times per second.
 - The CPG turns every policy output, even a jumpy one, into smooth, wave-shaped servo targets. That suits CPU-only training and real servos.
 
-## 6. Next steps
+## 6. `rl_cpg/`: SAC policy that sets CPG parameters (goal reaching)
 
-- **RL environment:** wrap `run()` as a Gymnasium environment. The simplest action is the CPG parameters (`CPG.set_params`) at about 1–2 Hz. The alternatives are joint targets, or a correction on top of the gait. The reward is forward speed, or progress to a goal.
+This follows the layering of [arXiv 2312.03223](https://arxiv.org/abs/2312.03223), without its A* planner:
+
+```
+policy (SAC, 2 Hz) ──4 CPG parameters──▶ CPG (1 kHz) ──joint targets, 50 Hz──▶ MuJoCo servos (500 Hz)
+```
+
+**Task:**
+- A goal appears 1–2 m away, in any direction around the snake.
+- The snake has 30 s to bring its centre of mass within 15 cm of it.
+- Reward:
+  - +10 per metre of progress toward the goal
+  - +10 for reaching it
+  - a small penalty for abrupt changes in the parameters
+
+**Action (4 values, each in [−1, 1]):**
+
+| Parameter | Range |
+|---|---|
+| `freq` | 0.3–1.0 Hz |
+| `v_amp` | 10–45° |
+| `v_phase` | 30–75°, head first |
+| `v_bias` | ±15°, steering |
+
+**Observation (33 values for vh9):**
+- goal distance, and its direction relative to the body (tail→head axis)
+- base tilt (gravity vector) and turning rate, as an IMU on the tail module would measure
+- joint angles and speeds
+- the current point in the gait cycle
+- the previous action
+
+```bash
+python software/rl_cpg/train_sac.py --model vh9_bare --steps 150000
+```
+
+```bash
+python software/rl_cpg/evaluate.py --policy software/rl_cpg/results/sac_vh9_bare.zip
+```
+
+```bash
+MUJOCO_GL=egl python software/rl_cpg/evaluate.py --policy software/rl_cpg/results/sac_vh9_bare.zip --plot eval.png --video eval.mp4
+```
+
+```bash
+python software/rl_cpg/evaluate.py --policy software/rl_cpg/results/sac_vh9_bare.zip --viewer
+```
+
+**Training settings (vh9_bare):**
+- SAC from Stable-Baselines3, with two 256-unit layers.
+- 6 parallel simulations, one gradient update per 3 collected steps, PyTorch on 1 thread.
+- 150k policy steps took **92 min** on the i7-1255U, about 27 steps/s.
+- The bottleneck is SAC's gradient updates, about 15 ms each on this CPU. The elliptic-friction physics comes second, at about 7× real time per process while moving.
+
+| Evaluation (20 goals) at | 10k steps | 20k | 30k | 40k – 150k |
+|---|---|---|---|---|
+| Goals reached | 100% | 0% | 0% | **100% at every check** |
+
+The early collapse and recovery is normal for SAC. `best_model.zip` keeps the best checkpoint, from 140k steps, which is `results/sac_vh9_bare.zip`.
+
+**Result:** 48 goals evenly spread around the snake (`results/eval_vh9_bare.png`, `.mp4`):
+
+| Controller | Reached | Mean time to goal | Median final distance |
+|---|---|---|---|
+| **RL + CPG** (140k) | **48/48 (100%)** | **5.5 s** | 0.06 m |
+| RL + CPG, early checkpoint (10k), 24 goals | 24/24 | 9.3 s | 0.10 m |
+| Open-loop CPG (default gait, never steers) | 2/48 (4%) | 7.5 s | 5.73 m |
+
+**What the policy learned:**
+- **It runs fast.** It sets `freq` close to the 1.0 Hz limit and `v_amp` to about 42°.
+- **It steers with the bias,** using the full ±15° range, and curves smoothly onto the goal. Goals behind are reached with a U-turn of about 1 m radius.
+- **Its gait stays within servo limits.** At its typical setting (0.95 Hz, 42°, φ 46°), vh9_bare runs at 313 mm/s with no torque saturation and at most 6° tracking error.
+
+**Limits:**
+- **Goal positions:** the policy is told where the goal is. A real robot would need localisation for that, such as an overhead camera or odometry.
+- **No randomisation:** friction, masses and servo behaviour are fixed at the model's estimates. Randomising them in training is the next step toward running on the real robot.
+
+**Moving to vh17:** pass `--model vh17_bare` to both scripts. The environment adapts to any layout, with 49 observations for 17 joints. Expect roughly twice the training time, because vh17 simulates about half as fast.
+
+## 7. Next steps
+
+- **Robustness for the real robot:** randomise friction, masses, servo gain and delay in `SnakeGoalEnv.reset`, then retrain and check the success rate holds.
+- **vh17_bare:** train with `--model vh17_bare`. The policy chooses `v_phase`, so it can learn to avoid the tail-servo overload seen at φ = 45°.
 - **Measurements:** measure part masses and servo response, and update `hardware/description/make_description.py`.
 - **Physical calibration:** check sideways wheel grip on the real floor, then set `friction` in the model to match.

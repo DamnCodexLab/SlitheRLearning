@@ -2,3 +2,5 @@ __pycache__/
 *.zip
 fusion_build_done.json
 fusion_interference.jsonl
+software/rl_cpg/runs/
+!software/rl_cpg/results/*.zip

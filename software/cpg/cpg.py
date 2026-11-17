@@ -48,6 +48,10 @@ class CPG:
         self.limit = limit_deg * DEG
         self.chains = {c: [k for k, t in enumerate(layout) if t == c] for c in "VH"}
         self.last_h = self.chains["H"][-1] if self.chains["H"] else None
+        # neighbour pairs (tail side, head side) of every chain, for vectorised coupling
+        pairs = [(a, b) for idx in self.chains.values() for a, b in zip(idx[:-1], idx[1:])]
+        self._ta = np.array([p[0] for p in pairs], int)
+        self._hb = np.array([p[1] for p in pairs], int)
         self.p = {}
         self.set_params(freq=freq, v_amp=v_amp, v_phase=v_phase, v_bias=v_bias,
                         h_amp=h_amp, h_phase=h_phase, h_bias=h_bias, head_lift=head_lift)
@@ -87,11 +91,10 @@ class CPG:
     # ------------------------------------------------------------ dynamics
     def _phase_rate(self, theta):
         rate = np.full(self.n, 2 * np.pi * self.p["freq"])
-        for idx in self.chains.values():
-            for a, b in zip(idx[:-1], idx[1:]):              # a = tail side, b = head side
-                phi = self.lag[a]
-                rate[a] += self.w * np.sin(theta[b] - theta[a] - phi)
-                rate[b] += self.w * np.sin(theta[a] - theta[b] + phi)
+        a, b = self._ta, self._hb                            # a = tail side, b = head side
+        s = self.w * np.sin(theta[b] - theta[a] - self.lag[a])
+        np.add.at(rate, a, s)                                # pulls a towards theta_b - phi
+        np.add.at(rate, b, -s)                               # pulls b towards theta_a + phi
         return rate
 
     def step(self, dt):
